@@ -36,6 +36,8 @@ Con este proyecto se busca facilitar la administración de la liga infantil de f
 | Programar partidos | Establecer fecha, hora, sede, equipo local y equipo visitante. | Administrador |
 | Registrar alineaciones | Seleccionar los jugadores que participarán en un partido e indicar si son titulares. | Administrador / Entrenador |
 | Registrar resultados | Registrar los goles del equipo local y visitante. | Administrador |
+| Registrar estadísticas | Registrar goles, tarjetas amarillas, tarjetas rojas y asistencias de cada jugador. | Administrador / Árbitro |
+| Consultar estadísticas | Visualizar las estadísticas individuales de los jugadores. | Todos los usuarios |
 | Consultar partidos | Visualizar los encuentros programados y sus resultados. | Todos los usuarios |
 | Consultar equipos y jugadores | Consultar los equipos participantes y sus integrantes. | Todos los usuarios |
 
@@ -57,8 +59,10 @@ flowchart TB
         UC6(["Programar partidos"])
         UC7(["Registrar alineaciones"])
         UC8(["Registrar resultados"])
-        UC9(["Consultar partidos"])
-        UC10(["Consultar equipos y jugadores"])
+        UC9(["Registrar estadísticas"])
+        UC10(["Consultar estadísticas"])
+        UC11(["Consultar partidos"])
+        UC12(["Consultar equipos y jugadores"])
     end
 
     A --- UC1
@@ -69,15 +73,19 @@ flowchart TB
     A --- UC6
     A --- UC7
     A --- UC8
+    A --- UC9
 
-    E --- UC9
-    E --- UC10
+    E --- UC11
+    E --- UC12
     E --- UC7
+    E --- UC10
 
     R --- UC8
+    R --- UC9
 
-    U --- UC9
     U --- UC10
+    U --- UC11
+    U --- UC12
 ```
 
 ---
@@ -86,7 +94,7 @@ flowchart TB
 
 ### 3.1 Descripción de las entidades
 
-El modelo entidad-relación está compuesto por siete entidades principales que permiten representar la información necesaria para administrar la liga infantil de fútbol.
+El modelo entidad-relación está compuesto por ocho entidades principales que permiten representar la información necesaria para administrar la liga infantil de fútbol.
 
 **1. Categoría**
 
@@ -155,6 +163,18 @@ El modelo entidad-relación está compuesto por siete entidades principales que 
 | equipo_local | INT | FK |
 | equipo_visitante | INT | FK |
 
+**8. Estadísticas del jugador**
+
+| Atributo | Tipo de dato | Clave |
+|---|---|---|
+| id_estadistica | INT | PK |
+| id_jugador | INT | FK |
+| id_partido | INT | FK |
+| goles | INT | |
+| tarjetas_amarillas | INT | |
+| tarjetas_rojas | INT | |
+| asistencias | INT | |
+
 ### 3.2 Diagrama entidad-relación
 
 ```mermaid
@@ -171,6 +191,9 @@ erDiagram
 
     PARTIDO ||--o{ ALINEACION : contiene
     JUGADORES ||--o{ ALINEACION : participa
+
+    JUGADORES ||--o{ ESTADISTICAS_JUGADOR : registra
+    PARTIDO ||--o{ ESTADISTICAS_JUGADOR : genera
 
     CATEGORIA {
         int id_categoria PK
@@ -224,6 +247,16 @@ erDiagram
         int equipo_local FK
         int equipo_visitante FK
     }
+
+    ESTADISTICAS_JUGADOR {
+        int id_estadistica PK
+        int id_jugador FK
+        int id_partido FK
+        int goles
+        int tarjetas_amarillas
+        int tarjetas_rojas
+        int asistencias
+    }
 ```
 
 ### 3.3 Descripción de las relaciones
@@ -236,3 +269,31 @@ erDiagram
 - **Árbitro - Partido (1:N):** Un árbitro puede dirigir varios partidos, pero cada partido tiene asignado un árbitro.
 - **Partido - Alineación (1:N):** Un partido puede tener varias alineaciones correspondientes a los jugadores participantes.
 - **Jugador - Alineación (1:N):** Un jugador puede aparecer en diferentes alineaciones a lo largo de distintos partidos.
+- **Jugador - Estadísticas (1:N):** Un jugador puede tener diferentes registros estadísticos en distintos partidos.
+- **Partido - Estadísticas (1:N):** Un partido puede contener estadísticas de varios jugadores.
+
+---
+
+## 4. Código SQL de la nueva tabla
+
+La siguiente tabla se agrega a las siete tablas originales para llevar el control de las estadísticas individuales de los jugadores.
+
+```sql
+CREATE TABLE estadisticas_jugador (
+    id_estadistica INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_jugador INTEGER NOT NULL,
+    id_partido INTEGER NOT NULL,
+    goles INTEGER NOT NULL DEFAULT 0 CHECK (goles >= 0),
+    tarjetas_amarillas INTEGER NOT NULL DEFAULT 0 CHECK (tarjetas_amarillas >= 0),
+    tarjetas_rojas INTEGER NOT NULL DEFAULT 0 CHECK (tarjetas_rojas >= 0),
+    asistencias INTEGER NOT NULL DEFAULT 0 CHECK (asistencias >= 0),
+
+    FOREIGN KEY (id_jugador)
+        REFERENCES jugadores(id_jugador),
+
+    FOREIGN KEY (id_partido)
+        REFERENCES partido(id_partido),
+
+    UNIQUE (id_jugador, id_partido)
+);
+```
